@@ -1,0 +1,60 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "CDC Sync Lag (Postgres Outbox to OpenSearch)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(cdc_sync_lag_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p95 Lag (seconds)"
+        }
+      ]
+    },
+    {
+      "title": "OpenSearch Query Latency (p95 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(opensearch_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 Query Latency"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(opensearch_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99 Query Latency"
+        }
+      ]
+    },
+    {
+      "title": "CDC Bulk Items Indexed Total",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(cdc_bulk_items_indexed_total[1m]))",
+          "legendFormat": "Indexed Items / sec"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["cdc", "golang", "opensearch", "kafka"],
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "title": "CDC Postgres to OpenSearch Observability",
+  "version": 1
+}
