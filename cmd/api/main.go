@@ -67,8 +67,9 @@ func main() {
 
 	productHdl := handlers.NewProductHandler(productSvc)
 	searchHdl := handlers.NewSearchHandler(searchSvc)
+	authHdl := handlers.NewAuthHandler(l)
 
-	router := api.NewRouter(productHdl, searchHdl, searchRepo)
+	router := api.NewRouter(productHdl, searchHdl, authHdl, searchRepo, l)
 
 	addr := ":" + port
 	if !strings.HasPrefix(port, ":") {

@@ -10,15 +10,32 @@ processors:
   batch:
     timeout: 1s
     send_batch_size: 256
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
 
 exporters:
   prometheus:
     endpoint: 0.0.0.0:8889
     namespace: cdc
 
+  opensearch:
+    http:
+      endpoint: "http://opensearch:9200"
+      tls:
+        insecure: true
+    logs_index: "logs-cdc-api-default"
+    dataset: "cdc"
+    namespace: "default"
+
 service:
   pipelines:
     metrics:
       receivers: [otlp]
-      processors: [batch]
+      processors: [memory_limiter, batch]
       exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [opensearch]

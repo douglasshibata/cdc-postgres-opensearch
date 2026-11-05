@@ -9,64 +9,65 @@ High-performance, event-driven Change Data Capture (CDC) synchronization pipelin
 ## 🏗️ Architecture & Data Flow
 
 ```
-                      ┌────────────────────────────────────────┐
-                      │            Write Mutation              │
-                      │   (ACID Transaction: Product + Outbox) │
-                      ▼                                        │
-┌─────────────────────────┐                                    │
-│   Go REST API           │────────────────────────────────────┘
+             ┌─────────────────────────────────────────────────────────┐
+             │                1. Business Write Mutation               │
+             │           (ACID Transaction: Product + Outbox)          │
+             ▼                                                         │
+┌─────────────────────────┐                                            │
+│   Go REST API           │────────────────────────────────────────────┘
 │   (cmd/api)             │
 │   - POST /products      │
 │   - GET  /search (fast) │◀──────────┐
 └─────────────────────────┘           │
-            │                         │ Search Query (< 15ms)
-            ▼                         │ (Fuzzy, Edge-nGram Autocomplete)
-┌─────────────────────────┐           │
-│   PostgreSQL 16         │           │
-│   - products table      │           │
-│   - outbox_events table │           │
-└─────────────────────────┘           │
-            │                         │
-            ▼ (Logical Replication /  │
-               wal_level=logical)     │
-┌─────────────────────────┐           │
-│   Debezium Connector    │           │
-└─────────────────────────┘           │
-            │                         │
-            ▼ (CDC JSON Events)       │
-┌─────────────────────────┐           │
-│   Apache Kafka          │           │
-│   Topic: cdc.outbox     │           │
-└─────────────────────────┘           │
-            │                         │
-            ▼ (Bulk Stream Ingestion) │
-┌─────────────────────────┐           │
-│   Go Indexer Worker     │           │
-│   (cmd/indexer)         │           │
-└─────────────────────────┘           │
-            │                         │
-            ▼ (Bulk Upsert/Delete)    │
-┌─────────────────────────┐           │
-│   OpenSearch 2.x        │───────────┘
-│   Index: products       │
-└─────────────────────────┘
-            │
-            ▼
+      │                  │            │ Search Query (< 15ms)
+      │ 2. High-volume   │ 1. Relational
+      │    Structured    │    ACID    │
+      │    Logs (slog)   │    Write   │
+      ▼                  ▼            │
+┌──────────────┐   ┌─────────────┐    │
+│ OTel         │   │ Postgres 16 │    │
+│ Collector    │   │ (Outbox)    │    │
+└──────────────┘   └─────────────┘    │
+      │                  │            │
+      │ Direct Ingestion │ WAL        │
+      ▼ (Data Streams)   ▼            │
+┌──────────────┐   ┌─────────────┐    │
+│ OpenSearch   │   │ Debezium    │    │
+│ logs-cdc-*   │   └─────────────┘    │
+└──────────────┘         │            │
+      │                  ▼            │
+      │            ┌─────────────┐    │
+      │            │ Kafka       │    │
+      │            └─────────────┘    │
+      │                  │            │
+      │                  ▼            │
+      │            ┌─────────────┐    │
+      │            │ Go Indexer  │    │
+      │            └─────────────┘    │
+      │                  │            │
+      │                  ▼ Bulk Upsert│
+      │            ┌─────────────┐    │
+      │            │ OpenSearch  │────┘
+      │            │ (products)  │
+      │            └─────────────┘
+      ▼
 ┌─────────────────────────┐
-│   Observability Stack   │
-│   OTel Collector        │──▶ Prometheus ──▶ Grafana Dashboard
-│   Sync Lag & Latencies  │
+│   Grafana Dashboards    │
+│  - Traffic & Perf (Eng) │
+│  - Audit & Biz (Sec)    │
+│  - Infra & Cluster (SRE)│
 └─────────────────────────┘
 ```
 
 ### Key Architectural Tenets
-1. **Zero Double-Writes:** The Go API writes solely to PostgreSQL. In the same ACID transaction, it records a domain event in the `outbox_events` table.
-2. **Eventual Consistency via CDC:** Debezium reads PostgreSQL's Write-Ahead Log (`WAL`) via logical replication slots and streams events into Kafka partitioned by `product_id`.
-3. **Decoupled Resilient Consumer:** The Go Indexer Worker buffers events in memory and flushes batches into OpenSearch via `BulkRequest`. If OpenSearch is temporarily unreachable, messages remain buffered in Kafka with zero data loss.
-4. **End-to-End Observability:** OpenTelemetry traces request life-cycles and records vital KPIs:
-   - `cdc_sync_lag_seconds`: Time elapsed from database commit to OpenSearch indexing.
-   - `opensearch_query_duration_seconds`: Search execution p95 and p99 percentiles.
-   - `cdc_bulk_items_indexed_total`: Throughput of indexed documents.
+1. **Zero Double-Writes for Business Data:** The Go API writes solely to PostgreSQL. In the same ACID transaction, it records a domain event in the `outbox_events` table.
+2. **Dedicated Fast-Track for Telemetry & High-Volume Logs:** Application logs are append-only and high volume. Passing application logs through PostgreSQL creates massive I/O bottlenecks. Instead, logs are emitted directly from Go as structured JSON (`log/slog`), buffered by OpenTelemetry Collector, and indexed into OpenSearch using **Data Streams** (`logs-cdc-*`).
+3. **Eventual Consistency via CDC:** Debezium reads PostgreSQL's Write-Ahead Log (`WAL`) via logical replication slots and streams events into Kafka partitioned by `product_id`.
+4. **Decoupled Resilient Consumer:** The Go Indexer Worker buffers events in memory and flushes batches into OpenSearch via `BulkRequest`. If OpenSearch is temporarily unreachable, messages remain buffered in Kafka with zero data loss.
+5. **Unified Grafana Observability Dashboard:**
+   - **Traffic & Performance (Engineering):** RPS throughput, HTTP latency heatmap, 5xx error rate gauge.
+   - **Auditing & Business (Product/Security):** Real-time critical login failure tracking, top accessed endpoints, client IP origins.
+   - **Infrastructure Health (SRE):** OpenSearch sync rate, CDC lag percentiles, Go memory and goroutine telemetry.
 
 ---
 

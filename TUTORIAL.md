@@ -105,13 +105,36 @@ A busca retornará o item recém-indexado em poucos milissegundos com autocomple
 
 ---
 
-## 📊 5. Observabilidade no Grafana
+## 📊 5. Observabilidade no Grafana & Pipeline de Logs
 
-- Acesse `http://localhost:3000` (Usuário: `admin` / Senha: `admin`).
-- O dashboard pré-configurado exibe:
-  - **CDC Sync Lag:** Latência em segundos entre a gravação no Postgres e a indexação no OpenSearch.
-  - **OpenSearch Query Latency:** Percentis p95 e p99 da velocidade de busca.
-  - **Bulk Items Indexed:** Vazão de eventos processados por segundo.
+O Grafana vem provisionado automaticamente com os datasources **Prometheus** (métricas de infra/lag) e **OpenSearch** (logs estruturados via Data Streams).
+Acesse `http://localhost:3000` (Usuário: `admin` / Senha: `admin`) e abra o dashboard **E-Commerce Observability: Logs, Metrics & CDC Telemetry**:
+
+### 1. Painel de Tráfego e Performance (Visão Engenharia)
+- **Requisições por Segundo (RPS):** Throughput em tempo real de requisições HTTP da API.
+- **Heatmap de Latência das APIs:** Distribuição e mapa de calor do tempo de resposta das buscas no OpenSearch.
+- **Indicador Gauge de Erros 5xx:** Alerta visual instantâneo para taxas elevadas de erro interno do servidor.
+
+### 2. Painel de Auditoria e Negócio (Visão Produto/Segurança)
+- **Últimas Falhas de Login Crítico:** Tabela alimentada pelo log estruturado JSON do Go filtrando `event: user_login AND status: failed`.
+- **Funcionalidades Mais Acessadas:** Gráfico de barras indicando endpoints com maior tráfego.
+- **Origem de Acessos por IP / Cliente:** Mapeamento de IPs para detecção de anomalias ou acessos externos.
+
+### 3. Painel de Saúde da Infraestrutura e Cluster
+- **Consumo de Memória e Goroutines:** Monitoramento de uso de memória residente (`process_resident_memory_bytes`) e threads leves do runtime Go.
+- **Vazão de Indexação e Lag do CDC:** Relação entre itens inseridos no OpenSearch por segundo e o percentil p95 de atraso de sincronização (`cdc_sync_lag_seconds`).
+
+---
+
+## ⚡ 6. Por que Logs Vão Direto para o OpenSearch (Data Streams)?
+
+Passar logs de aplicação pelo PostgreSQL para depois replicar ao OpenSearch via Debezium CDC cria um gargalo severo de I/O de disco no banco relacional, pois logs são dados imutáveis (*append-only*) e de altíssimo volume.
+
+**Solução Adotada:**
+1. O PostgreSQL armazena exclusivamente dados de negócio (entidades ACID e a tabela `outbox_events`).
+2. A aplicação Go emite logs estruturados em JSON via `log/slog` (com campos indexáveis: `event`, `user_id`, `status_code`, `latency_ms`).
+3. O **OpenTelemetry Collector** atua como buffer amortecedor e injeta os logs no OpenSearch utilizando **Data Streams** (`logs-cdc-api-default`).
+4. O OpenSearch aplica **Index Lifecycle Management (ILM)** automaticamente para particionar os logs por data/tamanho sem intervenção manual.
 
 ---
 

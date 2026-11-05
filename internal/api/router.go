@@ -2,9 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/jules/cdc-postgres-opensearch/internal/api/handlers"
+	"github.com/jules/cdc-postgres-opensearch/internal/api/middleware"
 	"github.com/jules/cdc-postgres-opensearch/internal/core/ports"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -13,7 +15,9 @@ import (
 func NewRouter(
 	productHandler *handlers.ProductHandler,
 	searchHandler *handlers.SearchHandler,
+	authHandler *handlers.AuthHandler,
 	searchRepo ports.SearchRepository,
+	logger *slog.Logger,
 ) http.Handler {
 	mux := http.NewServeMux()
 
@@ -32,6 +36,11 @@ func NewRouter(
 	})
 
 	mux.HandleFunc("/api/v1/search", searchHandler.Search)
+
+	// Auth and security audit simulation
+	if authHandler != nil {
+		mux.HandleFunc("/api/v1/auth/login", authHandler.Login)
+	}
 
 	// Health and metrics
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -54,5 +63,9 @@ func NewRouter(
 
 	mux.Handle("/metrics", promhttp.Handler())
 
-	return mux
+	if logger == nil {
+		logger = slog.Default()
+	}
+
+	return middleware.RequestLogger(logger)(mux)
 }

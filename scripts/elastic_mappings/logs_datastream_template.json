@@ -1,0 +1,76 @@
+{
+  "index_patterns": [
+    "logs-cdc-*"
+  ],
+  "data_stream": {},
+  "priority": 100,
+  "template": {
+    "settings": {
+      "number_of_shards": 2,
+      "number_of_replicas": 1,
+      "refresh_interval": "1s",
+      "index.plugins.index_state_management.rollover_alias": "logs-cdc-api-default"
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "event": {
+          "type": "keyword"
+        },
+        "level": {
+          "type": "keyword"
+        },
+        "msg": {
+          "type": "text"
+        },
+        "http_method": {
+          "type": "keyword"
+        },
+        "path": {
+          "type": "keyword"
+        },
+        "raw_query": {
+          "type": "keyword"
+        },
+        "status_code": {
+          "type": "integer"
+        },
+        "latency_ms": {
+          "type": "long"
+        },
+        "duration_sec": {
+          "type": "double"
+        },
+        "bytes_written": {
+          "type": "long"
+        },
+        "client_ip": {
+          "type": "ip"
+        },
+        "user_agent": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "user_id": {
+          "type": "keyword"
+        },
+        "status": {
+          "type": "keyword"
+        },
+        "reason": {
+          "type": "keyword"
+        },
+        "service": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

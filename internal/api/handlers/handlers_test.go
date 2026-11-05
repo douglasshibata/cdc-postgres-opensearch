@@ -83,8 +83,9 @@ func TestHandlers_EndToEndRoutes(t *testing.T) {
 
 	pHdl := handlers.NewProductHandler(pSvc)
 	sHdl := handlers.NewSearchHandler(sSvc)
+	aHdl := handlers.NewAuthHandler(nil)
 
-	router := api.NewRouter(pHdl, sHdl, sRepo)
+	router := api.NewRouter(pHdl, sHdl, aHdl, sRepo, nil)
 
 	// 1. Health check
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)

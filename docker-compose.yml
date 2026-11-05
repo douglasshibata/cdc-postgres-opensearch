@@ -135,8 +135,10 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-opensearch-datasource
     volumes:
       - ./deployments/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./deployments/grafana/provisioning:/etc/grafana/provisioning:ro
 
   api:
     build:
