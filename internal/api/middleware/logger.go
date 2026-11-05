@@ -42,14 +42,18 @@ func RequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			}
 
 			level := slog.LevelInfo
+			statusStr := "success"
 			if wrapped.statusCode >= 500 {
 				level = slog.LevelError
+				statusStr = "error"
 			} else if wrapped.statusCode >= 400 {
 				level = slog.LevelWarn
+				statusStr = "client_error"
 			}
 
 			logger.Log(r.Context(), level, "http_request",
 				slog.String("event", "http_request"),
+				slog.String("status", statusStr),
 				slog.String("http_method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.String("raw_query", r.URL.RawQuery),

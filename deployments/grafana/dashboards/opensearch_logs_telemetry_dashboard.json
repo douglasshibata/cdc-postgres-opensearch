@@ -1,0 +1,182 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "🔍 Governança, Logs e Performance da IA / API (OpenSearch)",
+      "type": "row"
+    },
+    {
+      "title": "Volume de Requisições da IA / API",
+      "type": "timeseries",
+      "description": "Mostra o volume e taxa de requisições agrupadas por status (ex: sucesso x erro)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 1,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "OpenSearch-Logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "OpenSearch-Logs"
+          },
+          "query": "event:http_request",
+          "queryType": "lucene",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "id": "2",
+              "field": "status.keyword",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "id": "3",
+              "field": "@timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
+          "unit": "req"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "success" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "error" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+          }
+        ]
+      }
+    },
+    {
+      "title": "Latência das Buscas RAG / APIs",
+      "type": "heatmap",
+      "description": "Mapa de calor com a distribuição de latência (ms) das buscas e requisições",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 2,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "OpenSearch-Logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "OpenSearch-Logs"
+          },
+          "query": "latency_ms:*",
+          "queryType": "lucene",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "histogram",
+              "id": "2",
+              "field": "latency_ms",
+              "settings": {
+                "interval": "50",
+                "min_doc_count": "0"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "id": "3",
+              "field": "@timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "calculate": false,
+        "color": {
+          "scheme": "Spectral"
+        },
+        "yAxis": {
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "title": "Auditoria em Tempo Real (Logs Panel)",
+      "type": "logs",
+      "description": "Logs críticos em tempo real filtrados por level: error ou level: warn",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 9 },
+      "id": 3,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "OpenSearch-Logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "OpenSearch-Logs"
+          },
+          "query": "level:(ERROR OR WARN OR error OR warn)",
+          "queryType": "lucene"
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["opensearch", "logs", "rag", "observability", "grafana"],
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "title": "OpenSearch: Logs, Latência & Auditoria em Tempo Real",
+  "version": 1
+}

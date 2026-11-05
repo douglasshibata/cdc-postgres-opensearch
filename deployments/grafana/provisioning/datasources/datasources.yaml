@@ -5,8 +5,21 @@ datasources:
     type: prometheus
     access: proxy
     url: http://prometheus:9090
+    isDefault: false
+    editable: true
+
+  - name: OpenSearch-Logs
+    type: grafana-opensearch-datasource
+    access: proxy
+    url: http://opensearch:9200
     isDefault: true
     editable: true
+    jsonData:
+      version: "2.18.0"
+      database: "logs-*"
+      timeField: "@timestamp"
+      flavor: "opensearch"
+      tlsSkipVerify: true
 
   - name: OpenSearch
     type: grafana-opensearch-datasource
