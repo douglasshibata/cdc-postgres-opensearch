@@ -53,6 +53,12 @@ func TestRequestLogger_StructuredOutput(t *testing.T) {
 	if logEntry["status_code"] != float64(201) {
 		t.Errorf("expected status_code 201, got %v", logEntry["status_code"])
 	}
+	if logEntry["status"] != "success" {
+		t.Errorf("expected status 'success', got %v", logEntry["status"])
+	}
+	if _, ok := logEntry["latency_ms"]; !ok {
+		t.Errorf("expected latency_ms field in log entry")
+	}
 }
 
 func TestRequestLogger_ErrorLevels(t *testing.T) {
@@ -76,5 +82,8 @@ func TestRequestLogger_ErrorLevels(t *testing.T) {
 
 	if logEntry["level"] != "ERROR" {
 		t.Errorf("expected log level ERROR for 500 status, got %v", logEntry["level"])
+	}
+	if logEntry["status"] != "error" {
+		t.Errorf("expected status 'error' for 500 status, got %v", logEntry["status"])
 	}
 }
